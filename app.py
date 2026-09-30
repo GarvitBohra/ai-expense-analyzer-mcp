@@ -75,8 +75,19 @@ def show_chart_from_question(question: str, expenses: pd.DataFrame) -> bool:
     else:
         totals = chart_expenses.groupby("category", as_index=False)["amount"].sum()
         if "pie" in question_lower:
+            pie_totals = totals[totals["amount"] > 0]
+            if pie_totals.empty:
+                st.warning("A pie chart needs at least one category with positive spending.")
+                return True
+            if len(pie_totals) != len(totals):
+                st.info("Categories with zero or negative net spending are not shown in pie charts.")
             figure, axis = plt.subplots()
-            axis.pie(totals["amount"], labels=totals["category"], autopct="%1.1f%%", startangle=90)
+            axis.pie(
+                pie_totals["amount"],
+                labels=pie_totals["category"],
+                autopct="%1.1f%%",
+                startangle=90,
+            )
             axis.axis("equal")
             st.caption(f"Pie chart: spending for {selected_label}")
             st.pyplot(figure, use_container_width=True)
@@ -195,16 +206,22 @@ with chart_col1:
 
 with chart_col2:
     st.caption("Pie chart")
-    figure, axis = plt.subplots()
-    axis.pie(
-        category_totals["amount"],
-        labels=category_totals["category"],
-        autopct="%1.1f%%",
-        startangle=90,
-    )
-    axis.axis("equal")
-    st.pyplot(figure, use_container_width=True)
-    plt.close(figure)
+    pie_totals = category_totals[category_totals["amount"] > 0]
+    if pie_totals.empty:
+        st.info("A pie chart needs at least one category with positive spending.")
+    else:
+        if len(pie_totals) != len(category_totals):
+            st.info("Categories with zero or negative net spending are not shown in pie charts.")
+        figure, axis = plt.subplots()
+        axis.pie(
+            pie_totals["amount"],
+            labels=pie_totals["category"],
+            autopct="%1.1f%%",
+            startangle=90,
+        )
+        axis.axis("equal")
+        st.pyplot(figure, use_container_width=True)
+        plt.close(figure)
 
 question = st.chat_input("Ask a question about your expenses")
 if question:
