@@ -7,6 +7,7 @@ A small portfolio project for asking questions about an expense CSV in plain Eng
 - Upload an expense CSV and preview its data
 - See total spending, transaction count, and average expense
 - View spending by category as a bar chart and pie chart
+- Request a filtered bar, pie, or line chart in natural language
 - Ask natural-language questions about totals, categories, and largest expenses
 - Use an OpenAI model to choose MCP tools instead of asking the model to calculate values itself
 - Show clear messages for missing files, bad CSV columns, invalid categories, and API problems
@@ -90,6 +91,8 @@ date,category,description,amount
 - What category did I spend the most on?
 - Show my expenses by category.
 - What are my 5 biggest expenses?
+- Show Bills and Food only as a line chart.
+- Create a pie chart for Food, Transport, and Entertainment.
 
 ## Example output
 

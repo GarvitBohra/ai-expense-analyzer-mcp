@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import sys
 import tempfile
 from pathlib import Path
@@ -40,6 +41,50 @@ def save_upload(uploaded_file) -> str:
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
         temp_file.write(uploaded_file.getvalue())
         return temp_file.name
+
+
+def show_chart_from_question(question: str, expenses: pd.DataFrame) -> bool:
+    """Render a requested chart using any category names found in the question."""
+    question_lower = question.lower()
+    if not any(word in question_lower for word in ("chart", "graph", "plot")):
+        return False
+
+    categories = expenses["category"].dropna().astype(str).unique().tolist()
+    selected_categories = [
+        category
+        for category in categories
+        if re.search(rf"\b{re.escape(category.lower())}\b", question_lower)
+    ]
+    chart_expenses = expenses[expenses["category"].isin(selected_categories or categories)].copy()
+    selected_label = ", ".join(selected_categories) if selected_categories else "all categories"
+
+    if "line" in question_lower:
+        chart_expenses["date"] = pd.to_datetime(chart_expenses["date"], errors="coerce")
+        chart_expenses = chart_expenses.dropna(subset=["date"])
+        if chart_expenses.empty:
+            st.warning("A line chart needs valid dates in the uploaded CSV.")
+            return True
+        line_data = (
+            chart_expenses.groupby(["date", "category"])["amount"]
+            .sum()
+            .unstack(fill_value=0)
+            .sort_index()
+        )
+        st.caption(f"Line chart: daily spending for {selected_label}")
+        st.line_chart(line_data)
+    else:
+        totals = chart_expenses.groupby("category", as_index=False)["amount"].sum()
+        if "pie" in question_lower:
+            figure, axis = plt.subplots()
+            axis.pie(totals["amount"], labels=totals["category"], autopct="%1.1f%%", startangle=90)
+            axis.axis("equal")
+            st.caption(f"Pie chart: spending for {selected_label}")
+            st.pyplot(figure, use_container_width=True)
+            plt.close(figure)
+        else:
+            st.caption(f"Bar chart: spending for {selected_label}")
+            st.bar_chart(totals, x="category", y="amount", color="#4F46E5")
+    return True
 
 
 def ask_with_mcp(question: str, csv_path: str) -> str:
@@ -170,6 +215,7 @@ if question:
             try:
                 answer = ask_with_mcp(question, st.session_state.csv_path)
                 st.write(answer)
+                show_chart_from_question(question, expenses)
             except (ValueError, OpenAIError, json.JSONDecodeError) as error:
                 st.error(f"Could not answer the question: {error}")
             except Exception as error:
