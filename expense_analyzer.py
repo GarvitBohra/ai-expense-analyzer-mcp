@@ -8,6 +8,11 @@ from pathlib import Path
 import pandas as pd
 
 REQUIRED_COLUMNS = {"date", "category", "description", "amount"}
+CATEGORY_ALIASES = {
+    "food": {"dining out", "groceries"},
+    "transport": {"gas"},
+    "bills": {"utilities", "subscriptions"},
+}
 _expenses: pd.DataFrame | None = None
 
 
@@ -48,19 +53,33 @@ def _data() -> pd.DataFrame:
     return _expenses
 
 
-def _matching_category(category: str) -> str:
-    categories = _data()["category"].dropna().astype(str).unique().tolist()
-    match = next((item for item in categories if item.lower() == category.lower()), None)
-    if match is None:
+def _expense_data() -> pd.DataFrame:
+    """Use positive values for spending and leave Income out of expense results."""
+    expenses = _data().copy()
+    expenses = expenses[expenses["category"].astype(str).str.lower() != "income"]
+    expenses["amount"] = expenses["amount"].abs()
+    return expenses
+
+
+def get_matching_categories(category: str) -> list[str]:
+    """Match an exact category or a beginner-friendly category alias."""
+    categories = _expense_data()["category"].dropna().astype(str).unique().tolist()
+    exact_match = next((item for item in categories if item.lower() == category.lower()), None)
+    if exact_match:
+        return [exact_match]
+
+    aliases = CATEGORY_ALIASES.get(category.lower(), set())
+    matches = [item for item in categories if item.lower() in aliases]
+    if not matches:
         raise ValueError(
             f"Invalid category '{category}'. Available categories: {', '.join(sorted(categories))}."
         )
-    return match
+    return matches
 
 
 def get_expense_summary() -> dict:
     """Return the core expense metrics."""
-    expenses = _data()
+    expenses = _expense_data()
     return {
         "total_expenses": round(float(expenses["amount"].sum()), 2),
         "transaction_count": int(len(expenses)),
@@ -70,26 +89,26 @@ def get_expense_summary() -> dict:
 
 def calculate_total(category: str | None = None) -> dict:
     """Calculate all spending, or spending in one category."""
-    expenses = _data()
+    expenses = _expense_data()
     if category:
-        category = _matching_category(category)
-        expenses = expenses[expenses["category"] == category]
+        matching_categories = get_matching_categories(category)
+        expenses = expenses[expenses["category"].isin(matching_categories)]
     return {"category": category or "All categories", "total": round(float(expenses["amount"].sum()), 2)}
 
 
 def filter_expenses(category: str | None = None) -> list[dict]:
     """Return expenses, optionally filtered to one category."""
-    expenses = _data()
+    expenses = _expense_data()
     if category:
-        category = _matching_category(category)
-        expenses = expenses[expenses["category"] == category]
+        matching_categories = get_matching_categories(category)
+        expenses = expenses[expenses["category"].isin(matching_categories)]
     return expenses.to_dict(orient="records")
 
 
 def group_by_category() -> list[dict]:
     """Return total spending in each category, highest first."""
     totals = (
-        _data()
+        _expense_data()
         .groupby("category", as_index=False)["amount"]
         .sum()
         .sort_values("amount", ascending=False)
@@ -102,4 +121,4 @@ def top_expenses(n: int = 5) -> list[dict]:
     """Return the largest individual expenses."""
     if n < 1:
         raise ValueError("The number of expenses must be at least 1.")
-    return _data().nlargest(n, "amount").to_dict(orient="records")
+    return _expense_data().nlargest(n, "amount").to_dict(orient="records")

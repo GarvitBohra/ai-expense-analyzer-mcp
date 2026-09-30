@@ -8,6 +8,7 @@ A small portfolio project for asking questions about an expense CSV in plain Eng
 - See total spending, transaction count, and average expense
 - View spending by category as a bar chart and pie chart
 - Request a filtered bar, pie, or line chart in natural language
+- Support bank-statement CSVs that record expenses as negative values and Income separately
 - Ask natural-language questions about totals, categories, and largest expenses
 - Use an OpenAI model to choose MCP tools instead of asking the model to calculate values itself
 - Show clear messages for missing files, bad CSV columns, invalid categories, and API problems

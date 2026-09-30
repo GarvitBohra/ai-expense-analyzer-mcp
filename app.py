@@ -18,7 +18,13 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from openai import OpenAI, OpenAIError
 
-from expense_analyzer import get_expense_summary, group_by_category, load_expenses
+from expense_analyzer import (
+    CATEGORY_ALIASES,
+    get_expense_summary,
+    get_matching_categories,
+    group_by_category,
+    load_expenses,
+)
 
 load_dotenv()
 
@@ -49,13 +55,19 @@ def show_chart_from_question(question: str, expenses: pd.DataFrame) -> bool:
     if not any(word in question_lower for word in ("chart", "graph", "plot")):
         return False
 
-    categories = expenses["category"].dropna().astype(str).unique().tolist()
+    chart_expenses = expenses[expenses["category"].astype(str).str.lower() != "income"].copy()
+    chart_expenses["amount"] = chart_expenses["amount"].abs()
+    categories = chart_expenses["category"].dropna().astype(str).unique().tolist()
     selected_categories = [
         category
         for category in categories
         if re.search(rf"\b{re.escape(category.lower())}\b", question_lower)
     ]
-    chart_expenses = expenses[expenses["category"].isin(selected_categories or categories)].copy()
+    for alias in CATEGORY_ALIASES:
+        if re.search(rf"\b{re.escape(alias)}\b", question_lower):
+            selected_categories.extend(get_matching_categories(alias))
+    selected_categories = list(dict.fromkeys(selected_categories))
+    chart_expenses = chart_expenses[chart_expenses["category"].isin(selected_categories or categories)]
     selected_label = ", ".join(selected_categories) if selected_categories else "all categories"
 
     if "line" in question_lower:
