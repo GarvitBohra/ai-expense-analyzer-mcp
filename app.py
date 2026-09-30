@@ -9,13 +9,15 @@ import sys
 import tempfile
 from pathlib import Path
 
+import matplotlib.pyplot as plt
+import pandas as pd
 import streamlit as st
 from dotenv import load_dotenv
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from openai import OpenAI, OpenAIError
 
-from expense_analyzer import get_expense_summary, load_expenses
+from expense_analyzer import get_expense_summary, group_by_category, load_expenses
 
 load_dotenv()
 
@@ -137,6 +139,27 @@ col1, col2, col3 = st.columns(3)
 col1.metric("Total Spending", f"${summary['total_expenses']:,.2f}")
 col2.metric("Number of Transactions", summary["transaction_count"])
 col3.metric("Average Expense", f"${summary['average_expense']:,.2f}")
+
+st.subheader("Spending by Category")
+category_totals = pd.DataFrame(group_by_category())
+chart_col1, chart_col2 = st.columns(2)
+
+with chart_col1:
+    st.caption("Bar chart")
+    st.bar_chart(category_totals, x="category", y="amount", color="#4F46E5")
+
+with chart_col2:
+    st.caption("Pie chart")
+    figure, axis = plt.subplots()
+    axis.pie(
+        category_totals["amount"],
+        labels=category_totals["category"],
+        autopct="%1.1f%%",
+        startangle=90,
+    )
+    axis.axis("equal")
+    st.pyplot(figure, use_container_width=True)
+    plt.close(figure)
 
 question = st.chat_input("Ask a question about your expenses")
 if question:

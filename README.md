@@ -6,6 +6,7 @@ A small portfolio project for asking questions about an expense CSV in plain Eng
 
 - Upload an expense CSV and preview its data
 - See total spending, transaction count, and average expense
+- View spending by category as a bar chart and pie chart
 - Ask natural-language questions about totals, categories, and largest expenses
 - Use an OpenAI model to choose MCP tools instead of asking the model to calculate values itself
 - Show clear messages for missing files, bad CSV columns, invalid categories, and API problems

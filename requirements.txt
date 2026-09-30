@@ -1,5 +1,6 @@
 streamlit>=1.57.0
 pandas>=2.2.0
+matplotlib>=3.8.0
 openai>=1.0.0
 # This project uses the beginner-friendly FastMCP v1 API.
 mcp>=1.0.0,<2.0.0
